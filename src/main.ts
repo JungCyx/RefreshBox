@@ -20,6 +20,14 @@ const createWindow = () => {
     },
   });
 
+  mainWindow.webContents.setWindowOpenHandler(() => {
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event) => {
+    event.preventDefault();
+  });
+
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
