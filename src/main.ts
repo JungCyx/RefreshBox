@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { GoogleOAuthService } from './auth/GoogleOAuthService';
+import { GoogleTokenStore } from './auth/GoogleTokenStore';
 import { MockEmailProvider } from './providers/MockEmailProvider';
 import { IPC_CHANNELS } from './shared/ipc';
 
@@ -11,12 +13,57 @@ if (started) {
 
 const emailProvider = new MockEmailProvider();
 
+// Token storage and Google OAuth service
+const tokenStore = new GoogleTokenStore(
+  path.join(app.getPath('userData'), 'refreshbox-google-token.enc'),
+);
+
+const googleOAuthService = new GoogleOAuthService(
+  process.env.REFRESHBOX_GOOGLE_CLIENT_ID,
+  tokenStore,
+);
+
+// IPC Handlers
 ipcMain.handle(IPC_CHANNELS.LIST_EMAILS, async () => {
   try {
     return await emailProvider.listEmails();
   } catch (error) {
     console.error('Failed to list emails from provider:', error);
     throw new Error('Failed to load emails from the provider.');
+  }
+});
+
+ipcMain.handle(IPC_CHANNELS.GET_GMAIL_STATUS, async () => {
+  try {
+    return await googleOAuthService.getConnectionStatus();
+  } catch (error) {
+    console.error('Failed to get Gmail connection status:', error);
+    return { state: 'disconnected' };
+  }
+});
+
+ipcMain.handle(IPC_CHANNELS.CONNECT_GMAIL, async () => {
+  try {
+    return await googleOAuthService.connect();
+  } catch (error: unknown) {
+    console.error('Failed to connect Gmail account:', error);
+    const message =
+      error instanceof Error && error.message.includes('cancelled')
+        ? 'Google connection was cancelled.'
+        : 'Failed to connect Google account. Please try again.';
+    throw new Error(message);
+  }
+});
+
+ipcMain.handle(IPC_CHANNELS.DISCONNECT_GMAIL, async () => {
+  try {
+    return await googleOAuthService.disconnect();
+  } catch (error) {
+    console.error('Failed to disconnect Gmail account:', error);
+    return {
+      status: { state: 'disconnected' },
+      revoked: false,
+    };
   }
 });
 

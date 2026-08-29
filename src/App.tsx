@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmailDetails } from './components/EmailDetails';
+import { GmailConnectionCard } from './components/GmailConnectionCard';
 import { EmailCategory, NormalizedEmail } from './types/email';
 
 type FilterType = 'all' | EmailCategory;
@@ -133,6 +134,9 @@ export const App: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {/* Gmail Connection Card */}
+        <GmailConnectionCard />
 
         {/* Filter Segmented Control Bar */}
         <div className="toolbar-row">
