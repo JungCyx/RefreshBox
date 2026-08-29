@@ -1,11 +1,24 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { MockEmailProvider } from './providers/MockEmailProvider';
+import { IPC_CHANNELS } from './shared/ipc';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+const emailProvider = new MockEmailProvider();
+
+ipcMain.handle(IPC_CHANNELS.LIST_EMAILS, async () => {
+  try {
+    return await emailProvider.listEmails();
+  } catch (error) {
+    console.error('Failed to list emails from provider:', error);
+    throw new Error('Failed to load emails from the provider.');
+  }
+});
 
 const createWindow = () => {
   // Create the browser window.

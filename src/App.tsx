@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmailDetails } from './components/EmailDetails';
-import { mockEmails } from './data/mockEmails';
 import { EmailCategory, NormalizedEmail } from './types/email';
 
 type FilterType = 'all' | EmailCategory;
@@ -16,29 +15,50 @@ const formatDate = (isoString: string): string => {
 };
 
 export const App: React.FC = () => {
+  const [emails, setEmails] = useState<NormalizedEmail[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
 
+  const loadEmails = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await window.refreshBox.listEmails();
+      setEmails(data);
+      setSelectedEmailId(null);
+    } catch {
+      setError('Unable to load emails from the provider. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadEmails();
+  }, [loadEmails]);
+
   const counts = useMemo(() => {
     return {
-      all: mockEmails.length,
-      suspicious: mockEmails.filter((e) => e.category === 'suspicious').length,
-      newsletter: mockEmails.filter((e) => e.category === 'newsletter').length,
-      regular: mockEmails.filter((e) => e.category === 'regular').length,
+      all: emails.length,
+      suspicious: emails.filter((e) => e.category === 'suspicious').length,
+      newsletter: emails.filter((e) => e.category === 'newsletter').length,
+      regular: emails.filter((e) => e.category === 'regular').length,
     };
-  }, []);
+  }, [emails]);
 
   const filteredEmails = useMemo(() => {
     if (activeFilter === 'all') {
-      return mockEmails;
+      return emails;
     }
-    return mockEmails.filter((email) => email.category === activeFilter);
-  }, [activeFilter]);
+    return emails.filter((email) => email.category === activeFilter);
+  }, [activeFilter, emails]);
 
   const selectedEmail = useMemo(() => {
     if (!selectedEmailId) return null;
-    return mockEmails.find((email) => email.id === selectedEmailId) || null;
-  }, [selectedEmailId]);
+    return emails.find((email) => email.id === selectedEmailId) || null;
+  }, [selectedEmailId, emails]);
 
   const filterOptions: { id: FilterType; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: counts.all },
@@ -141,17 +161,28 @@ export const App: React.FC = () => {
         {/* Split / Responsive Content Area */}
         <div className={`workspace-split ${selectedEmail ? 'has-selected-email' : ''}`}>
           {/* Email List Pane */}
-          <section
-            className="message-pane"
-            aria-label="Message list"
-            aria-hidden={selectedEmail ? undefined : undefined}
-          >
+          <section className="message-pane" aria-label="Message list">
             <div className="message-surface">
-              {filteredEmails.length === 0 ? (
-                <div className="empty-state-surface" role="status">
+              {isLoading ? (
+                <div className="state-surface loading-surface" role="status" aria-live="polite">
+                  <div className="loading-spinner" aria-hidden="true" />
+                  <p className="state-title">Loading messages...</p>
+                  <p className="state-text">Fetching inbox messages from the provider.</p>
+                </div>
+              ) : error ? (
+                <div className="state-surface error-surface" role="alert">
+                  <div className="error-icon" aria-hidden="true">!</div>
+                  <h2 className="state-title">Unable to load messages</h2>
+                  <p className="state-text">{error}</p>
+                  <button type="button" className="retry-btn" onClick={loadEmails}>
+                    Retry
+                  </button>
+                </div>
+              ) : filteredEmails.length === 0 ? (
+                <div className="state-surface empty-state-surface" role="status">
                   <div className="empty-state-icon" aria-hidden="true">∅</div>
-                  <h2 className="empty-state-title">No messages found</h2>
-                  <p className="empty-state-text">
+                  <h2 className="state-title">No messages found</h2>
+                  <p className="state-text">
                     There are no emails matching &ldquo;{activeFilter}&rdquo;.
                   </p>
                 </div>

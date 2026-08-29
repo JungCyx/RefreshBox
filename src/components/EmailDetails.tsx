@@ -173,7 +173,7 @@ export const EmailDetails: React.FC<EmailDetailsProps> = ({ email, onBack }) => 
         <section className="details-section auth-section" aria-labelledby="auth-heading">
           <div className="auth-header-row">
             <h2 id="auth-heading" className="section-title">
-              Sender authentication
+              Sender authentication &mdash; mock results
             </h2>
           </div>
 
@@ -205,7 +205,7 @@ export const EmailDetails: React.FC<EmailDetailsProps> = ({ email, onBack }) => 
           </div>
 
           <div className="auth-disclaimer-box" role="note">
-            <strong>Security Notice:</strong> Passing SPF, DKIM, and DMARC proves sender domain authorization, but does not prove the message content or intention is safe.
+            <strong>Security Notice:</strong> Passing SPF, DKIM, and DMARC indicates that the message passed domain authentication checks. It does not verify the person who sent it or prove that its content is safe.
           </div>
         </section>
 
