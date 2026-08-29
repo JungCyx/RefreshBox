@@ -20,6 +20,7 @@ const tokenStore = new GoogleTokenStore(
 
 const googleOAuthService = new GoogleOAuthService(
   process.env.REFRESHBOX_GOOGLE_CLIENT_ID,
+  process.env.REFRESHBOX_GOOGLE_CLIENT_SECRET,
   tokenStore,
 );
 

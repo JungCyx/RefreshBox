@@ -14,11 +14,17 @@ const OAUTH_TIMEOUT_MS = 180000; // 3 minutes
 
 export class GoogleOAuthService {
   private readonly clientId: string | null;
+  private readonly clientSecret: string | null;
   private readonly tokenStore: GoogleTokenStore;
   private isConnecting = false;
 
-  constructor(clientId: string | null | undefined, tokenStore: GoogleTokenStore) {
+  constructor(
+    clientId: string | null | undefined,
+    clientSecret: string | null | undefined,
+    tokenStore: GoogleTokenStore,
+  ) {
     this.clientId = GoogleOAuthService.validateClientId(clientId);
+    this.clientSecret = GoogleOAuthService.validateClientSecret(clientSecret);
     this.tokenStore = tokenStore;
   }
 
@@ -33,8 +39,19 @@ export class GoogleOAuthService {
     return trimmed;
   }
 
+  static validateClientSecret(clientSecret: string | null | undefined): string | null {
+    if (!clientSecret) {
+      return null;
+    }
+    const trimmed = clientSecret.trim();
+    if (trimmed.length === 0) {
+      return null;
+    }
+    return trimmed;
+  }
+
   isConfigured(): boolean {
-    return this.clientId !== null;
+    return this.clientId !== null && this.clientSecret !== null;
   }
 
   async getConnectionStatus(): Promise<GmailConnectionStatus> {
@@ -51,8 +68,8 @@ export class GoogleOAuthService {
   }
 
   async connect(): Promise<GmailConnectionStatus> {
-    if (!this.clientId) {
-      throw new Error('Google OAuth is not configured with a valid client ID.');
+    if (!this.isConfigured() || !this.clientId || !this.clientSecret) {
+      throw new Error('Google OAuth is not configured with a valid client ID and client secret.');
     }
 
     if (this.isConnecting) {
@@ -238,6 +255,7 @@ export class GoogleOAuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const body = new URLSearchParams({
       client_id: this.clientId as string,
+      client_secret: this.clientSecret as string,
       code,
       code_verifier: verifier,
       redirect_uri: redirectUri,
@@ -253,6 +271,29 @@ export class GoogleOAuthService {
     });
 
     if (!response.ok) {
+      let errorCode: string | undefined;
+      let errorDescription: string | undefined;
+
+      try {
+        const errorData = await response.json();
+        if (errorData && typeof errorData === 'object') {
+          if (typeof errorData.error === 'string') {
+            errorCode = errorData.error;
+          }
+          if (typeof errorData.error_description === 'string') {
+            errorDescription = errorData.error_description;
+          }
+        }
+      } catch {
+        // Non-JSON error response
+      }
+
+      console.error('Google token exchange failed:', {
+        status: response.status,
+        error: errorCode ?? 'unknown',
+        errorDescription: errorDescription ?? 'none',
+      });
+
       throw new Error('Failed to exchange authorization code for Google tokens.');
     }
 

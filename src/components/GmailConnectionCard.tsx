@@ -107,7 +107,7 @@ export const GmailConnectionCard: React.FC = () => {
       {status.state === 'unconfigured' && !isLoading && (
         <div className="account-message unconfigured-message">
           <p>
-            OAuth client ID is not configured. Set the <code>REFRESHBOX_GOOGLE_CLIENT_ID</code> environment variable before starting the application to enable Gmail authentication.
+            OAuth configuration is missing. Set both the <code>REFRESHBOX_GOOGLE_CLIENT_ID</code> and <code>REFRESHBOX_GOOGLE_CLIENT_SECRET</code> environment variables before starting the application to enable Gmail authentication.
           </p>
         </div>
       )}
