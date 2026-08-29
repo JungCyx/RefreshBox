@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { EmailDetails } from './components/EmailDetails';
 import { mockEmails } from './data/mockEmails';
 import { EmailCategory, NormalizedEmail } from './types/email';
 
@@ -16,6 +17,7 @@ const formatDate = (isoString: string): string => {
 
 export const App: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     return {
@@ -33,12 +35,26 @@ export const App: React.FC = () => {
     return mockEmails.filter((email) => email.category === activeFilter);
   }, [activeFilter]);
 
+  const selectedEmail = useMemo(() => {
+    if (!selectedEmailId) return null;
+    return mockEmails.find((email) => email.id === selectedEmailId) || null;
+  }, [selectedEmailId]);
+
   const filterOptions: { id: FilterType; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: counts.all },
     { id: 'suspicious', label: 'Suspicious', count: counts.suspicious },
     { id: 'newsletter', label: 'Newsletters', count: counts.newsletter },
     { id: 'regular', label: 'Regular', count: counts.regular },
   ];
+
+  const handleFilterChange = (filterId: FilterType) => {
+    setActiveFilter(filterId);
+    setSelectedEmailId(null);
+  };
+
+  const handleBackToInbox = () => {
+    setSelectedEmailId(null);
+  };
 
   const getCategoryLabel = (category: EmailCategory): string => {
     switch (category) {
@@ -109,7 +125,7 @@ export const App: React.FC = () => {
                   type="button"
                   className={`segment-btn ${isSelected ? 'selected' : ''}`}
                   aria-pressed={isSelected}
-                  onClick={() => setActiveFilter(option.id)}
+                  onClick={() => handleFilterChange(option.id)}
                 >
                   <span className="segment-label">{option.label}</span>
                   <span className="segment-count">{option.count}</span>
@@ -122,43 +138,70 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Email Message List Surface */}
-        <section className="message-surface" aria-label="Message list">
-          {filteredEmails.length === 0 ? (
-            <div className="empty-state-surface" role="status">
-              <div className="empty-state-icon" aria-hidden="true">∅</div>
-              <h2 className="empty-state-title">No messages found</h2>
-              <p className="empty-state-text">
-                There are no emails categorized as &ldquo;{activeFilter}&rdquo; at this time.
-              </p>
+        {/* Split / Responsive Content Area */}
+        <div className={`workspace-split ${selectedEmail ? 'has-selected-email' : ''}`}>
+          {/* Email List Pane */}
+          <section
+            className="message-pane"
+            aria-label="Message list"
+            aria-hidden={selectedEmail ? undefined : undefined}
+          >
+            <div className="message-surface">
+              {filteredEmails.length === 0 ? (
+                <div className="empty-state-surface" role="status">
+                  <div className="empty-state-icon" aria-hidden="true">∅</div>
+                  <h2 className="empty-state-title">No messages found</h2>
+                  <p className="empty-state-text">
+                    There are no emails matching &ldquo;{activeFilter}&rdquo;.
+                  </p>
+                </div>
+              ) : (
+                <ul className="message-list">
+                  {filteredEmails.map((email: NormalizedEmail) => {
+                    const isRowSelected = selectedEmailId === email.id;
+                    return (
+                      <li key={email.id} className="message-list-item">
+                        <button
+                          type="button"
+                          className={`message-row-btn ${isRowSelected ? 'row-selected' : ''}`}
+                          onClick={() => setSelectedEmailId(email.id)}
+                          aria-label={`Select message from ${email.senderName}: ${email.subject}`}
+                          aria-pressed={isRowSelected}
+                        >
+                          <div className="message-top-line">
+                            <div className="sender-block">
+                              <span className="sender-name">{email.senderName}</span>
+                              <span className="sender-address">&lt;{email.senderAddress}&gt;</span>
+                            </div>
+                            <div className="meta-block">
+                              <span className={`category-tag tag-${email.category}`}>
+                                {getCategoryLabel(email.category)}
+                              </span>
+                              <time className="message-time" dateTime={email.receivedAt}>
+                                {formatDate(email.receivedAt)}
+                              </time>
+                            </div>
+                          </div>
+                          <div className="message-subject-line">
+                            <span className="message-subject">{email.subject}</span>
+                          </div>
+                          <p className="message-preview-text">{email.preview}</p>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
-          ) : (
-            <ul className="message-list">
-              {filteredEmails.map((email: NormalizedEmail) => (
-                <li key={email.id} className="message-row">
-                  <div className="message-top-line">
-                    <div className="sender-block">
-                      <span className="sender-name">{email.senderName}</span>
-                      <span className="sender-address">&lt;{email.senderAddress}&gt;</span>
-                    </div>
-                    <div className="meta-block">
-                      <span className={`category-tag tag-${email.category}`}>
-                        {getCategoryLabel(email.category)}
-                      </span>
-                      <time className="message-time" dateTime={email.receivedAt}>
-                        {formatDate(email.receivedAt)}
-                      </time>
-                    </div>
-                  </div>
-                  <div className="message-subject-line">
-                    <span className="message-subject">{email.subject}</span>
-                  </div>
-                  <p className="message-preview-text">{email.preview}</p>
-                </li>
-              ))}
-            </ul>
+          </section>
+
+          {/* Details Pane */}
+          {selectedEmail && (
+            <section className="details-pane" aria-label="Email details view">
+              <EmailDetails email={selectedEmail} onBack={handleBackToInbox} />
+            </section>
           )}
-        </section>
+        </div>
       </main>
     </div>
   );
